@@ -10,10 +10,11 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const DisasterMap = ({ requests, alerts }) => {
+const DisasterMap = ({ requests, alerts, searchedLocation }) => {
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const markersRef = useRef([]);
+    const searchMarkerRef = useRef(null);
 
     useEffect(() => {
         if (!mapInstanceRef.current) {
@@ -88,6 +89,34 @@ const DisasterMap = ({ requests, alerts }) => {
         });
 
     }, [requests, alerts]);
+
+    useEffect(() => {
+        if (!mapInstanceRef.current || !searchedLocation) return;
+        
+        const { lat, lng, name } = searchedLocation;
+        
+        // Fly slowly to the precisely searched area
+        mapInstanceRef.current.flyTo([lat, lng], 12, {
+            duration: 1.5
+        });
+
+        // Remove old search marker if applicable
+        if (searchMarkerRef.current) {
+            searchMarkerRef.current.remove();
+        }
+
+        // Add a brilliant blue marker for the search location
+        searchMarkerRef.current = L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: 'search-marker',
+                html: `<div style="background-color: #00d2ff; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0, 210, 255, 0.8);"></div>`,
+                iconSize: [24, 24]
+            })
+        }).addTo(mapInstanceRef.current);
+
+        searchMarkerRef.current.bindPopup(`<b>Searched Location:</b><br>${name}`).openPopup();
+        
+    }, [searchedLocation]);
 
     return <div ref={mapRef} className="disaster-map" />;
 };

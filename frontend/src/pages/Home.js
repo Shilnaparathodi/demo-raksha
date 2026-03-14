@@ -6,19 +6,72 @@ import './Home.css';
 const Home = ({ requests, alerts }) => {
     const [searchLocation, setSearchLocation] = useState('');
     const [weatherData, setWeatherData] = useState(null);
+    const [searchedCoords, setSearchedCoords] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSearch = (e) => {
+    const handleSearch = async (e) => {
         e.preventDefault();
-        // Mock Weather API Call
-        if (searchLocation.trim() !== '') {
+        const query = searchLocation.trim();
+        if (!query) return;
+
+        setIsLoading(true);
+        try {
+            // 1. Geocode with Nominatim (OpenStreetMap)
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`);
+            if (!geoRes.ok) throw new Error('Geocoding API failed');
+            const geoData = await geoRes.json();
+
+            if (geoData.length === 0) {
+                alert('Location not found in OpenStreetMap. Please try a different city or region name.');
+                setIsLoading(false);
+                return;
+            }
+
+            const { lat, lon, display_name } = geoData[0];
+            const parsedLat = parseFloat(lat);
+            const parsedLon = parseFloat(lon);
+            
+            // Extract a shorter name for the weather card (usually the city/locality)
+            const shortName = display_name.split(',')[0];
+            setSearchedCoords({ lat: parsedLat, lng: parsedLon, name: shortName });
+
+            // 2. Fetch actual weather from Open-Meteo
+            const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${parsedLat}&longitude=${parsedLon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,weather_code`);
+            if (!weatherRes.ok) throw new Error('Weather API failed');
+            const weatherJson = await weatherRes.json();
+            
+            const current = weatherJson.current;
+
+            const getWeatherDescription = (code) => {
+                if (code === 0) return 'Clear Sky';
+                if (code >= 1 && code <= 3) return 'Partly Cloudy';
+                if (code === 45 || code === 48) return 'Foggy';
+                if (code >= 51 && code <= 55) return 'Drizzle';
+                if (code >= 56 && code <= 57) return 'Freezing Drizzle';
+                if (code >= 61 && code <= 65) return 'Rain';
+                if (code >= 66 && code <= 67) return 'Freezing Rain';
+                if (code >= 71 && code <= 75) return 'Snow';
+                if (code === 77) return 'Snow Grains';
+                if (code >= 80 && code <= 82) return 'Rain Showers';
+                if (code >= 85 && code <= 86) return 'Snow Showers';
+                if (code >= 95 && code <= 99) return 'Thunderstorm';
+                return 'Overcast';
+            };
+
             setWeatherData({
-                location: searchLocation,
-                temperature: 28 + Math.floor(Math.random() * 5), // Mock temp 28-32
-                humidity: 70 + Math.floor(Math.random() * 20), // Mock humidity 70-90
-                precipitation: Math.floor(Math.random() * 50),
-                windSpeed: 10 + Math.floor(Math.random() * 15),
-                condition: ['Heavy Rain', 'Thunderstorm', 'Overcast', 'Mist'].includes(searchLocation) ? searchLocation : 'Heavy Rain'
+                location: shortName,
+                temperature: current.temperature_2m,
+                humidity: current.relative_humidity_2m,
+                precipitation: current.precipitation,
+                windSpeed: current.wind_speed_10m,
+                condition: getWeatherDescription(current.weather_code)
             });
+
+        } catch (err) {
+            console.error('Error fetching APIs', err);
+            alert('Could not connect to the API services. Check console for details.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -33,13 +86,19 @@ const Home = ({ requests, alerts }) => {
                         onChange={(e) => setSearchLocation(e.target.value)}
                         className="weather-input"
                     />
-                    <button type="submit" className="weather-search-btn">Check Status</button>
+                    <button type="submit" className="weather-search-btn" disabled={isLoading}>
+                        {isLoading ? 'Searching...' : 'Check Status'}
+                    </button>
                 </form>
             </div>
 
             <div className="main-content">
                 <div className="map-container">
-                    <DisasterMap requests={requests} alerts={alerts} />
+                    <DisasterMap 
+                        requests={requests} 
+                        alerts={alerts} 
+                        searchedLocation={searchedCoords} 
+                    />
                 </div>
                 
                 <div className="sidebar">
