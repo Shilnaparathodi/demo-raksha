@@ -1,38 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Help from './pages/Help';
 import LiveDashboard from './pages/LiveDashboard';
+import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from './firebase';
 import './App.css';
 
 function App() {
-    const [requests, setRequests] = useState([
-        {
-            id: '1',
-            name: 'John Doe',
-            type: 'medical',
-            description: 'Need ambulance for injured person',
-            location: 'Kochi',
-            priority: 4,
-            urgency: 4,
-            people: 1,
-            status: 'pending',
-            timestamp: new Date()
-        },
-        {
-            id: '2',
-            name: 'Jane Smith',
-            type: 'food',
-            description: 'Family stranded, need food',
-            location: 'Alappuzha',
-            priority: 2,
-            urgency: 3,
-            people: 4,
-            status: 'pending',
-            timestamp: new Date()
-        }
-    ]);
+    const [requests, setRequests] = useState([]);
+
+    // Fetch live requests from Firestore
+    useEffect(() => {
+        const q = query(collection(db, 'requests'), orderBy('timestamp', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const requestsData = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                // Convert Firestore timestamp to JS Date if it exists
+                const timestamp = data.timestamp?.toDate ? data.timestamp.toDate() : new Date();
+                requestsData.push({ id: doc.id, ...data, timestamp });
+            });
+            setRequests(requestsData);
+        }, (error) => {
+            console.error("Error fetching live requests:", error);
+        });
+
+        // Cleanup subscription on unmount
+        return () => unsubscribe();
+    }, []);
 
     const [resources, setResources] = useState({
         food: { quantity: 100 },
@@ -85,16 +82,21 @@ function App() {
             priority = 1;
         }
 
-        // 2. Add To State
+        // 2. Add To Firestore directly
         const newRequest = {
             ...requestData,
-            id: Date.now().toString(),
             priority,
             status: 'pending',
-            timestamp: new Date()
+            timestamp: new Date() // Firestore automatically handles this on addDoc
         };
 
-        setRequests(prev => [newRequest, ...prev]);
+        try {
+            await addDoc(collection(db, 'requests'), newRequest);
+            console.log("Document successfully written!");
+        } catch (e) {
+            console.error("Error adding document: ", e);
+            return false;
+        }
 
         // 3. Decrement Resources based on request type
         setResources(prev => {

@@ -10,9 +10,28 @@ const RequestForm = ({ onSubmit }) => {
         people: 1,
         name: ''
     });
-    const [offlineMode, setOfflineMode] = useState(false);
-    const [offlineQueue, setOfflineQueue] = useState([]);
+    
+    // Automatically detect real-world connection
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [offlineQueue, setOfflineQueue] = useState(() => JSON.parse(localStorage.getItem('offlineRequests') || '[]'));
     const [submitting, setSubmitting] = useState(false);
+
+    // Set up listeners for the browser's internet connection
+    React.useEffect(() => {
+        const handleOnline = () => {
+            setIsOnline(true);
+            syncOfflineRequests();
+        };
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     const handleChange = (e) => {
         setFormData({
@@ -25,12 +44,13 @@ const RequestForm = ({ onSubmit }) => {
         e.preventDefault();
         setSubmitting(true);
 
-        if (offlineMode || !navigator.onLine) {
+        if (!navigator.onLine) {
             const queue = JSON.parse(localStorage.getItem('offlineRequests') || '[]');
             queue.push({ ...formData, offlineId: Date.now() });
             localStorage.setItem('offlineRequests', JSON.stringify(queue));
             setOfflineQueue(queue);
-            alert('Request saved offline. Will sync when online.');
+            alert('You are offline. Request saved locally. It will auto-sync when your internet returns.');
+            setFormData({ type: 'food', description: '', location: '', urgency: 3, people: 1, name: '' });
         } else {
             const success = await onSubmit(formData);
             if (success) {
@@ -53,21 +73,20 @@ const RequestForm = ({ onSubmit }) => {
     return (
         <div className="request-form-container">
             <h2>🚨 Submit Emergency Request</h2>
-            <div className="offline-toggle">
-                <label>
-                    <input
-                        type="checkbox"
-                        checked={offlineMode}
-                        onChange={(e) => setOfflineMode(e.target.checked)}
-                    />
-                    Simulate Offline Mode
-                </label>
-                {offlineQueue.length > 0 && (
-                    <button onClick={syncOfflineRequests} className="sync-btn">
-                        Sync {offlineQueue.length} Offline Requests
-                    </button>
+            <div className="offline-status">
+                {!isOnline && (
+                    <div className="offline-banner">
+                        🔴 No Internet Connection - Offline Mode Active. Your requests will be saved and synced automatically when back online.
+                    </div>
+                )}
+                
+                {isOnline && offlineQueue.length > 0 && (
+                    <div className="syncing-banner">
+                        🟢 Back Online! Auto-syncing {offlineQueue.length} saved requests...
+                    </div>
                 )}
             </div>
+
             <form onSubmit={handleSubmit} className="request-form">
                 <div className="form-group">
                     <label>Your Name</label>
