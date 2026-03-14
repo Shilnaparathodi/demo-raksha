@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import RequestForm from './components/RequestForm';
-import Dashboard from './components/Dashboard';
-import DisasterMap from './components/DisasterMap';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+import Help from './pages/Help';
+import LiveDashboard from './pages/LiveDashboard';
 import './App.css';
 
 function App() {
@@ -118,19 +120,18 @@ function App() {
     };
 
     return (
-        <div className="App">
-            <header className="App-header">
-                <h1>🌊 Demo Raksha - Kerala Disaster Coordination</h1>
-                <p>Offline Ready Demo Mode</p>
-            </header>
-            <main>
-                <div className="container">
-                    <RequestForm onSubmit={handleSubmitRequest} />
-                    <Dashboard requests={requests} resources={resources} />
-                    <DisasterMap requests={requests} alerts={alerts} />
-                </div>
-            </main>
-        </div>
+        <Router>
+            <div className="App">
+                <Navbar />
+                <main className="App-main">
+                    <Routes>
+                        <Route path="/" element={<Home requests={requests} alerts={alerts} />} />
+                        <Route path="/help" element={<Help onSubmit={handleSubmitRequest} />} />
+                        <Route path="/dashboard" element={<LiveDashboard requests={requests} resources={resources} />} />
+                    </Routes>
+                </main>
+            </div>
+        </Router>
     );
 }
 

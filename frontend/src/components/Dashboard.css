@@ -1,8 +1,8 @@
 .dashboard {
-    background: white;
-    border-radius: 15px;
-    padding: 25px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
 }
 
 .stats-cards {
@@ -13,10 +13,12 @@
 }
 
 .stat-card {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background: white;
     padding: 20px;
-    border-radius: 10px;
+    border-radius: 8px;
     text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border-top: 4px solid #1e3c72;
 }
 
 .stat-card h3 {
@@ -41,6 +43,11 @@
 
 .priority-stats {
     margin: 20px 0;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border-top: 4px solid #f39c12;
 }
 
 .priority-item {
@@ -97,4 +104,9 @@
 .chart-container {
     margin-top: 30px;
     height: 300px;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border-top: 4px solid #2a5298;
 }
